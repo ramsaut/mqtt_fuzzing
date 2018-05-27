@@ -1,1 +1,16 @@
-scapy==2.4.0
+construct==2.9.45
+dill==0.2.7.1
+hexdump==3.3
+Logbook==1.3.3
+lxml==4.2.1
+netaddr==0.7.19
+NetfilterQueue==0.8.1
+-e git+https://github.com/ramsaut/polymorph.git#egg=polymorph
+-e git+https://github.com/jonathanslenders/python-prompt-toolkit@7bdb62cec09fe9c6e55fbf3b2d7c6370c935c440#egg=prompt_toolkit
+py==1.5.3
+pyshark==0.3.7.11
+-e git+https://github.com/secdev/scapy.git@905c80d6ed435477224c53de8850f763b04d495d#egg=scapy
+six==1.11.0
+termcolor==1.1.0
+trollius==1.0.4
+wcwidth==0.1.7
