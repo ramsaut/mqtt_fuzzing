@@ -60,6 +60,9 @@ class TestWrite(unittest.TestCase):
     def test_write_template(self):
         self.backend.templates.write('data/templates')
 
+    def test_write_by_packet_type(self):
+        self.backend.write_by_packet_type('data/templates')
+
     def tearDown(self):
         self.backend.templates._tgen.__del__()
 
@@ -68,7 +71,7 @@ class TestWireshark(unittest.TestCase):
     backend = FuzzingBackend()
 
     def setUp(self):
-        self.backend.read_capture(config['Fuzzer']['MQTT_Sample'])
+        self.backend.read_capture(config['Fuzzer']['MQTT_Sample'], config['Fuzzer']['Filter'])
         self.assertIsNotNone(self.backend.templates)
 
     def test_wireshark(self):
