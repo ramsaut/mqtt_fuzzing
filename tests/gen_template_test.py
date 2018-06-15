@@ -2,6 +2,9 @@ import unittest
 from mqtt_fuzzing.config import config
 import logging
 from mqtt_fuzzing.gen_template import *
+import time
+import signal
+from polymorph.template import Template
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -77,6 +80,32 @@ class TestWireshark(unittest.TestCase):
     def test_wireshark(self):
         self.backend.wireshark()
 
+class TestMultiInceptor(unittest.TestCase):
+    backend = FuzzingBackend()
+
+
+    def setUp(self):
+        self.backend.read_capture(config['Fuzzer']['MQTT_Sample'], config['Fuzzer']['Filter'])
+        self.assertIsNotNone(self.backend.templates)
+        self.backend.dissect()
+        self.backend.start_spoofing(config['Device']['Host'],
+                                    config['Broker']['Host'],
+                                    config['Fuzzer']['Interface'])
+        self.backend.write_by_packet_type('data/templates/by_type/')
+
+    def test_intercept_multiple_types(self):
+
+        interceptor = MultInterceptor(templates_path='data/templates/by_type/')
+        interceptor.start()
+        print("-------------------"+str(os.getpid()))
+        time.sleep(10)
+        print("KILLING --------------" + str(os.getpid()))
+        os.kill(os.getpid(), signal.SI)
+        print("KILLED --------------" + str(os.getpid()))
+
+    def tearDown(self):
+        self.backend.templates._tgen.__del__()
+        self.backend.stop_spoofing()
 
 if __name__ == '__main__':
     unittest.main()
