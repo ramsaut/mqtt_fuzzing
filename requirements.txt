@@ -1,16 +1,27 @@
+asn1crypto==0.24.0
+cffi==1.11.5
 construct==2.9.45
+cryptography==2.2.2
 dill==0.2.7.1
 hexdump==3.3
+idna==2.6
 Logbook==1.3.3
 lxml==4.2.1
 netaddr==0.7.19
 NetfilterQueue==0.8.1
--e git+https://github.com/ramsaut/polymorph.git#egg=polymorph
+paho-mqtt==1.3.1
+-e git+https://github.com/ramsaut/polymorph.git@b0619e43284b40fb597e84e82070cdab63e5655e#egg=polymorph
 -e git+https://github.com/jonathanslenders/python-prompt-toolkit@7bdb62cec09fe9c6e55fbf3b2d7c6370c935c440#egg=prompt_toolkit
 py==1.5.3
+pycparser==2.18
+pydivert==2.1.0
+pyOpenSSL==18.0.0
 pyshark==0.3.7.11
 -e git+https://github.com/secdev/scapy.git@905c80d6ed435477224c53de8850f763b04d495d#egg=scapy
 six==1.11.0
+sslstrip==0.9.2
 termcolor==1.1.0
 trollius==1.0.4
+Twisted==13.1.0
 wcwidth==0.1.7
+zope.interface==4.5.0
