@@ -60,11 +60,8 @@ class TestWrite(unittest.TestCase):
         self.assertIsNotNone(self.backend.templates)
         self.backend.dissect()
 
-    def test_write_template(self):
-        self.backend.templates.write('data/templates')
-
     def test_write_by_packet_type(self):
-        self.backend.write_by_packet_type('data/templates')
+        self.backend.write_by_packet_type('data/templates/by_type/')
 
     def tearDown(self):
         self.backend.templates._tgen.__del__()

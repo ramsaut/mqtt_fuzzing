@@ -36,7 +36,6 @@ class MQTTAlive(threading.Thread):
             # Timeout after 2 seconds
             if time.time() - self.last_beat > 3:
                 print("Timeout! {} {} Stopping execution".format(time.time(),self.last_beat))
-                self.interceptor.tracker.writeToPCAP()
                 self.interceptor.terminate()
                 return
         print("Finished test without finding bugs. Quitting!")

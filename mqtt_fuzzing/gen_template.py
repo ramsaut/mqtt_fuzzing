@@ -7,6 +7,7 @@ import pathlib
 from polymorph.interceptor import Interceptor
 from polymorph.packet import Packet
 import mqtt_fuzzing.preconditions
+from mqtt_fuzzing.extended_template import FuzzingTemplate
 from polymorph.template import Template
 import os, sys, threading, time
 from mqtt_fuzzing.mqtt_ping import MQTTAlive
@@ -15,7 +16,7 @@ from scapy.utils import wrpcap
 from scapy.utils import PcapWriter
 from mqtt_fuzzing.config import config
 from scapy.all import Ether, IP
-
+from mqtt_fuzzing.extended_template import write_template
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -75,7 +76,7 @@ class FuzzingBackend:
         dir = os.path.join(path, str(repr))
         pathlib.Path(dir).mkdir(exist_ok=True)
         template.add_precondition("log", self.log_packet)
-        template.write(os.path.join(dir, "template.json"))
+        write_template(template, os.path.join(dir, "template.json"))
 
     @staticmethod
     def log_packet(packet):
@@ -117,7 +118,7 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
     def read_templates_from_path(self, path):
         for direc in os.walk(path):
             for file in direc[2]:
-                t = Template(from_path=os.path.join(direc[0], file))
+                t = FuzzingTemplate(from_path=os.path.join(direc[0], file))
                 msgtype = t.getlayer('RAW.MQTT').getfield('msgtype').dict()['frepr']
                 self.packets[msgtype] = Packet(t)
 
