@@ -9,7 +9,8 @@ from polymorph.packet import Packet
 import mqtt_fuzzing.preconditions
 from polymorph.template import Template
 import os, sys, threading, time
-
+from mqtt_fuzzing.mqtt_ping import MQTTAlive
+import multiprocessing
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -37,7 +38,6 @@ class FuzzingBackend:
 
     def read_capture(self, file, filter):
         self.templates = capture(userfilter=filter,
-                func=self.log_packet,
                 offline=file)
 
     def dissect(self):
@@ -78,7 +78,7 @@ class FuzzingBackend:
         return packet
 
 
-class MultInterceptor(Interceptor, threading.Thread):
+class MultInterceptor(Interceptor, multiprocessing.Process):
     def __init__(self, templates_path,
                  iptables_rule="iptables -A FORWARD -j NFQUEUE --queue-num 1",
                  ip6tables_rule="ip6tables -A FORWARD -j NFQUEUE --queue-num 1"):
@@ -95,7 +95,7 @@ class MultInterceptor(Interceptor, threading.Thread):
             Iptables rule for intercepting packets for ipv6.
 
         """
-        threading.Thread.__init__(self)
+        multiprocessing.Process.__init__(self)
         self.iptables_rule = iptables_rule
         self.ip6tables_rule = ip6tables_rule
         self.packets = dict()
@@ -130,7 +130,6 @@ class MultInterceptor(Interceptor, threading.Thread):
 
         # Initialization of the Packet with the new raw bytes
         payload = packet.get_payload()
-        print(payload)
         tcp_header_length = (payload[0x20] & 0xf0) >> 4
         if tcp_header_length == 5 and len(payload) > 0x28:
             message_type = (payload[0x28] & 0xf0) >> 4

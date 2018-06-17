@@ -94,14 +94,13 @@ class TestMultiInceptor(unittest.TestCase):
         self.backend.write_by_packet_type('data/templates/by_type/')
 
     def test_intercept_multiple_types(self):
-
         interceptor = MultInterceptor(templates_path='data/templates/by_type/')
         interceptor.start()
-        print("-------------------"+str(os.getpid()))
-        time.sleep(10)
-        print("KILLING --------------" + str(os.getpid()))
-        os.kill(os.getpid(), signal.SI)
-        print("KILLED --------------" + str(os.getpid()))
+
+        t = MQTTAlive(interceptor, 60)
+        t.start()
+        t.join(65)
+
 
     def tearDown(self):
         self.backend.templates._tgen.__del__()
