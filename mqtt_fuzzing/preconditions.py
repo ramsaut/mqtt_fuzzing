@@ -8,7 +8,7 @@ logger.setLevel('INFO')
 
 # Log new packet
 def logging(packet):
-    logger.info("New packet: {}".format(packet))
+    print("New packet: {}".format(packet))
     return packet
 
 # The first precondition, global_vars, is creating a global variable that will remain constant for all intercepted

@@ -130,10 +130,11 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
 
         # Initialization of the Packet with the new raw bytes
         payload = packet.get_payload()
+        # Determine Message Type
         tcp_header_length = (payload[0x20] & 0xf0) >> 4
         if tcp_header_length == 5 and len(payload) > 0x28:
             message_type = (payload[0x28] & 0xf0) >> 4
-            print(message_type)
+            print("Intercepted message with type: {}".format(message_type))
         else:
             # check if ack
             if len(payload) == 40 and (payload[0x21] & 0x10) >> 4:
@@ -146,18 +147,22 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
             work_packet = self.packets[message_type]
         # No template exists
         except KeyError:
+            print("Template does not exist for type {}".format(message_type))
             packet.accept()
             return
 
+        # Applying packet to template
         work_packet.raw = payload
 
         # Executing the preconditions, executions and postconditions
         for functions in self._functions:
             for condition in functions:
+                print("Executing condition: {}".format(condition))
                 pkt = condition(work_packet)
                 # If the condition returns None, it is not held and the
                 # packet must be forwarded
                 if pkt is None:
+
                     if work_packet:
                         packet.set_payload(work_packet.raw)
                     packet.accept()

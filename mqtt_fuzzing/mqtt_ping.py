@@ -34,7 +34,7 @@ class MQTTAlive(threading.Thread):
             self.client1.loop(timeout=0.3, max_packets=1)
             self.client2.publish("heartbeat")
             # Timeout after 2 seconds
-            if time.time() - self.last_beat > 2:
+            if time.time() - self.last_beat > 3:
                 print("Timeout! {} {} Stopping execution".format(time.time(),self.last_beat))
                 self.interceptor.terminate()
                 return
