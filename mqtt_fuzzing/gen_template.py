@@ -11,6 +11,11 @@ from polymorph.template import Template
 import os, sys, threading, time
 from mqtt_fuzzing.mqtt_ping import MQTTAlive
 import multiprocessing
+from scapy.utils import wrpcap
+from scapy.utils import PcapWriter
+from mqtt_fuzzing.config import config
+from scapy.all import Ether, IP
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -107,6 +112,7 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
         self._functions = [self._preconditions,
                            self._executions,
                            self._postconditions]
+        self.pktwriter = PcapWriter(config['Output']['File'], append=False, sync=True)
 
     def read_templates_from_path(self, path):
         for direc in os.walk(path):
@@ -138,17 +144,17 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
         else:
             # check if ack
             if len(payload) == 40 and (payload[0x21] & 0x10) >> 4:
-                packet.accept()
+                self.sendOriginalPacket(packet)
                 return
             print("other length {} or packet to short {}".format(tcp_header_length, len(payload)))
-            packet.accept()
+            self.sendOriginalPacket(packet)
             return
         try:
             work_packet = self.packets[message_type]
         # No template exists
         except KeyError:
             print("Template does not exist for type {}".format(message_type))
-            packet.accept()
+            self.sendOriginalPacket(packet)
             return
 
         # Applying packet to template
@@ -162,21 +168,34 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
                 # If the condition returns None, it is not held and the
                 # packet must be forwarded
                 if pkt is None:
-
-                    if work_packet:
-                        packet.set_payload(work_packet.raw)
-                    packet.accept()
+                    self.sendPacket(packet, work_packet)
                     return
                 # If the precondition returns the packet, we assign it to the
                 # actual packet
                 work_packet = pkt
         # If all the conditions are met, we assign the payload of the modified
         # packet to the nfqueue packet and forward it
+        self.sendPacket(packet, work_packet)
+
+    def sendPacket(self, packet, work_packet):
+        print("Forwarding packet")
         packet.set_payload(work_packet.raw)
+        self.write_netfilterqueue_pacet(packet)
         packet.accept()
+
+    def sendOriginalPacket(self, packet):
+        print("Forwarding packet")
+        self.write_netfilterqueue_pacet(packet)
+        packet.accept()
+
 
     def run(self):
         self.intercept()
+
+    def write_netfilterqueue_pacet(self, packet):
+        # Format hw adress in the format ff:ff:ff:ff:ff:ff
+        asadress = ':'.join(packet.get_hw().hex()[i:i + 2] for i in range(0, 12, 2))
+        self.pktwriter.write(Ether(dst=asadress) / IP(packet.get_payload()))
 
     def intercept(self):
         """This method intercepts the packets and send them to a callback
@@ -191,3 +210,7 @@ class MultInterceptor(Interceptor, multiprocessing.Process):
             nfqueue.run()
         except KeyboardInterrupt:
             self.clean_iptables()
+
+    def terminate(self):
+        self.clean_iptables()
+        super().terminate()
