@@ -10,11 +10,11 @@ class MQTTAlive(threading.Thread):
     last_beat = time.time()
     client1 = paho.Client("heartbeatsub")
     client2 = paho.Client("heartbeatpub")
+    threads = []
 
-    def __init__(self, interceptor, timeout):
+    def __init__(self, timeout):
         super().__init__()
         self.timeout = timeout
-        self.interceptor = interceptor
         self.client1.connect(config['Broker']['Host'], int(config['Broker']['Port'])) #establish connection
         self.client1.on_connect = self.on_connect
         self.client1.on_message = self.on_message
@@ -31,12 +31,21 @@ class MQTTAlive(threading.Thread):
         self.last_beat = time.time()
         starttime = time.time()
         while time.time() - starttime < self.timeout:
-            self.client1.loop(timeout=0.3, max_packets=1)
+            self.client1.loop(timeout=float(config['Heartbeat']['Frequency']), max_packets=1)
+            # print("Send heartbeat {}".format(float(config['Heartbeat']['Frequency'])))
+            time.sleep(float(config['Heartbeat']['Frequency']))
             self.client2.publish("heartbeat")
             # Timeout after 2 seconds
-            if time.time() - self.last_beat > 3:
-                print("Timeout! {} {} Stopping execution".format(time.time(),self.last_beat))
-                self.interceptor.terminate()
+            if time.time() - self.last_beat > float(config['Heartbeat']['Timeout']):
+                print("Timeout! {} {} Stopping execution".format(time.time(), self.last_beat))
+                self.stop()
                 return
         print("Finished test without finding bugs. Quitting!")
-        self.interceptor.terminate()
+        self.stop()
+
+    def add_thread(self, t):
+        self.threads.append(t)
+
+    def stop(self):
+        for t in self.threads:
+            t.stop()

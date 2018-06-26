@@ -91,12 +91,12 @@ class TestMultiInceptor(unittest.TestCase):
         self.backend.write_by_packet_type('data/templates/by_type/')
 
     def test_intercept_multiple_types(self):
-        interceptor = MultInterceptor(templates_path='data/templates/by_type/')
+        interceptor = MultInterceptor(templates_path='data/templates/to_read/')
         interceptor.start()
 
-        t = MQTTAlive(interceptor, 60)
+        t = MQTTAlive(interceptor, float(config['Fuzzer']['Total']))
         t.start()
-        t.join(65)
+        t.join(float(config['Fuzzer']['Total']) + 5)
 
 
     def tearDown(self):

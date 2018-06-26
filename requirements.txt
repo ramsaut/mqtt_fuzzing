@@ -19,7 +19,6 @@ pyOpenSSL==18.0.0
 pyshark==0.3.7.11
 -e git+https://github.com/secdev/scapy.git@905c80d6ed435477224c53de8850f763b04d495d#egg=scapy
 six==1.11.0
-sslstrip==0.9.2
 termcolor==1.1.0
 trollius==1.0.4
 Twisted==13.1.0

@@ -17,6 +17,17 @@ from scapy.utils import PcapWriter
 from mqtt_fuzzing.config import config
 from scapy.all import Ether, IP
 from mqtt_fuzzing.extended_template import write_template
+from mqtt_fuzzing.postcondition import insert_tcpip
+from mqtt_fuzzing.preconditions import track_tcpip
+import socket
+import errno
+import select
+import copy
+from scapy.sendrecv import sniff
+import json
+import binascii
+from mqtt_fuzzing.utils import *
+from mqtt_fuzzing.fuzz import fuzz
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -27,7 +38,7 @@ class FuzzingBackend:
     current_template = None
 
     def start_spoofing(self, targets, gateway, interface):
-        set_ip_forwarding(1)
+        # set_ip_forwarding(1)
         try:
             logger.info("Started ARP-Spoofing between {} and {} on interface {}".format(targets, gateway, interface))
             self.poisener = get_arpspoofer(targets, gateway, interface)
@@ -83,135 +94,62 @@ class FuzzingBackend:
         logger.info(packet.summary())
         return packet
 
+class TemplateGenerator():
 
-class MultInterceptor(Interceptor, multiprocessing.Process):
-    def __init__(self, templates_path,
-                 iptables_rule="iptables -A FORWARD -j NFQUEUE --queue-num 1",
-                 ip6tables_rule="ip6tables -A FORWARD -j NFQUEUE --queue-num 1"):
-        """Initialization method of the `MultInterceptor` class.
+    def read_capture(self):
+        plist = sniff(filter=config['Fuzzer']['Filter'], prn=self.log_packet, offline=config['Fuzzer']['MQTT_Sample'])
+        return plist
 
-        Parameters
-        ----------
-        templates : :obj:`Template`
-            A `Template` dictionary that will be parsed to obtain the conditions
-            and other values. The packettypes are used as keys. The templates are the values.
-        iptables_rule : :obj:`str`
-            Iptables rule for intercepting packets.
-        ip6tables_rule : :obj:`str`
-            Iptables rule for intercepting packets for ipv6.
+    def create_templates(self, packets):
+        templates = {}
+        while len(packets):
+            packet = packets.pop(0)
+            print(packet.summary())
+            # Strip Ether, IP, TCP
+            payload = packet.getlayer(3)
+            to_broker = packet['TCP'].dport == int(config['Broker']['Port'])
+            add_packet_to_templates(templates, to_broker, payload)
 
-        """
-        multiprocessing.Process.__init__(self)
-        self.iptables_rule = iptables_rule
-        self.ip6tables_rule = ip6tables_rule
-        self.packets = dict()
-        self.read_templates_from_path(templates_path)
+        print(templates)
+        return templates
 
-        self._preconditions = [mqtt_fuzzing.preconditions.logging, mqtt_fuzzing.preconditions.global_vars]
-        self._executions = []
-        self._postconditions = []
-        self._functions = [self._preconditions,
-                           self._executions,
-                           self._postconditions]
-        self.pktwriter = PcapWriter(config['Output']['File'], append=False, sync=True)
+    def save_to_disk(self, templates):
+        templates_new = []
+        for key, value in templates.items():
+            template = {
+                'to_broker': key[0],
+                'name': key[1],
+                'attributes': value
+            }
+            templates_new.append(template)
 
-    def read_templates_from_path(self, path):
-        for direc in os.walk(path):
-            for file in direc[2]:
-                t = FuzzingTemplate(from_path=os.path.join(direc[0], file))
-                msgtype = t.getlayer('RAW.MQTT').getfield('msgtype').dict()['frepr']
-                self.packets[msgtype] = Packet(t)
+        with open(config['Output']['Templates'], 'w') as outfile:
+            json.dump(templates_new, outfile, indent = 4, cls=OwnEncoder)
 
+    @staticmethod
+    def log_packet(packet):
+        # logger.info(packet.summary())
+        return packet
 
-    def linux_modify(self, packet):
-        """This is the callback method that will be called when a packet
-        is intercepted. It is responsible of executing the preconditions,
-        executions and postconditions of the `Template`.
+class OwnEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        if isinstance(obj, bytes):
+            return binascii.hexlify(obj).decode('utf-8')
+        return json.JSONEncoder.default(self, obj)
 
-        Parameters
-        ----------
-        packet : :obj:`Packet`
-            Netfilterqueue packet object. The packet that is intercepted.
+class TemplateReader():
 
-        """
+    def readTeamplates(self):
+        with open(config['Fuzzer']['Templates'], 'r') as infile:
+            templates = json.load(infile)
 
-        # Initialization of the Packet with the new raw bytes
-        payload = packet.get_payload()
-        # Determine Message Type
-        tcp_header_length = (payload[0x20] & 0xf0) >> 4
-        if tcp_header_length == 5 and len(payload) > 0x28:
-            message_type = (payload[0x28] & 0xf0) >> 4
-            print("Intercepted message with type: {}".format(message_type))
-        else:
-            # check if ack
-            if len(payload) == 40 and (payload[0x21] & 0x10) >> 4:
-                self.sendOriginalPacket(packet)
-                return
-            print("other length {} or packet to short {}".format(tcp_header_length, len(payload)))
-            self.sendOriginalPacket(packet)
-            return
-        try:
-            work_packet = self.packets[message_type]
-        # No template exists
-        except KeyError:
-            print("Template does not exist for type {}".format(message_type))
-            self.sendOriginalPacket(packet)
-            return
+        templates_new = {}
+        for template in templates:
+            templates_new[(template['to_broker'], template['name'])] = template['attributes']
+            for name, field in template['attributes']['fields'].items():
+                field['values'] = set(field['values'])
 
-        # Applying packet to template
-        work_packet.raw = payload
+        return templates_new
 
-        # Executing the preconditions, executions and postconditions
-        for functions in self._functions:
-            for condition in functions:
-                print("Executing condition: {}".format(condition))
-                pkt = condition(work_packet)
-                # If the condition returns None, it is not held and the
-                # packet must be forwarded
-                if pkt is None:
-                    self.sendPacket(packet, work_packet)
-                    return
-                # If the precondition returns the packet, we assign it to the
-                # actual packet
-                work_packet = pkt
-        # If all the conditions are met, we assign the payload of the modified
-        # packet to the nfqueue packet and forward it
-        self.sendPacket(packet, work_packet)
-
-    def sendPacket(self, packet, work_packet):
-        print("Forwarding packet")
-        packet.set_payload(work_packet.raw)
-        self.write_netfilterqueue_pacet(packet)
-        packet.accept()
-
-    def sendOriginalPacket(self, packet):
-        print("Forwarding packet")
-        self.write_netfilterqueue_pacet(packet)
-        packet.accept()
-
-
-    def run(self):
-        self.intercept()
-
-    def write_netfilterqueue_pacet(self, packet):
-        # Format hw adress in the format ff:ff:ff:ff:ff:ff
-        asadress = ':'.join(packet.get_hw().hex()[i:i + 2] for i in range(0, 12, 2))
-        self.pktwriter.write(Ether(dst=asadress) / IP(packet.get_payload()))
-
-    def intercept(self):
-        """This method intercepts the packets and send them to a callback
-        function."""
-        from netfilterqueue import NetfilterQueue
-        nfqueue = NetfilterQueue()
-        # The iptables rule queue number by default is 1
-        nfqueue.bind(1, self.linux_modify)
-        try:
-            self.set_iptables_rules()
-            print("[*] Waiting for packets...\n\n(Press Ctrl-C to exit)\n")
-            nfqueue.run()
-        except KeyboardInterrupt:
-            self.clean_iptables()
-
-    def terminate(self):
-        self.clean_iptables()
-        super().terminate()
