@@ -6,7 +6,11 @@ from mqtt_fuzzing.utils import goc, add_packet_to_templates
 def fuzz(packet, to_broker, templates):
     payload = packet
     while payload:
-        layer = templates[(to_broker, type(payload).__name__)]
+        try:
+            layer = templates[(to_broker, type(payload).__name__)]
+        except KeyError:
+            # If there is no template return original
+            return packet
         print(layer)
 
         for fieldname, value in payload.fields.items():
@@ -55,5 +59,4 @@ def fuzz(packet, to_broker, templates):
     except:
         print("Payload could not be created. Maybe string longer than possible? Retrying...")
         packet = fuzz(packet, to_broker, templates)
-    # add_packet_to_templates(templates, to_broker, payload)
     return packet

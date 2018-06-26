@@ -112,8 +112,8 @@ class MultInterceptor(threading.Thread):
         """
         self.packets = dict()
         self.templates = templates
-        self.pktwriter = PcapWriter(config['Output']['File'], append=False, sync=True)
-        self.pktinputwriter = PcapWriter(config['Output']['Unspoofed'], append=False, sync=True)
+        self.pktwriter = open(config['Output']['File'], 'w')
+        self.pktinputwriter = open(config['Output']['Unspoofed'], 'w')
         self.in_socket = in_socket
         super().__init__()
 
@@ -181,41 +181,52 @@ class MultInterceptor(threading.Thread):
 
                 if sock == local_socket:
                     # From Client
+                    self.write_packet(data, modified=False, to_broker=True)
                     if len(data):
                         print(data)
+
                         data = self.modify(data, True)
                         print("Sending data to client: {}".format(data))
                         remote_socket.send(data)
+                        self.write_packet(data, modified=True, to_broker=True)
                     else:
                         print("Connection from local client {} closed".format(peer))
                         remote_socket.close()
-                        running = False
+                        self.running = False
                         break
                 elif sock == remote_socket:
                     # From Broker
+                    self.write_packet(data, modified=False, to_broker=False)
                     if len(data):
                         print(data)
                         data = self.modify(data, False)
                         print("Sending data to broker: {}".format(data))
                         local_socket.send(data)
+                        self.write_packet(data, modified=True, to_broker=False)
                     else:
                         print("Connection to broker {} closed".format(peer))
                         local_socket.close()
-                        running = False
+                        self.running = False
                         break
 
-    def write_netfilterqueue_packet(self, packet, original_payload, raw=None):
-        if raw is None:
-            raw = packet.get_payload()
-        # Format hw adress in the format ff:ff:ff:ff:ff:ff
-        asadress = ':'.join(packet.get_hw().hex()[i:i + 2] for i in range(0, 12, 2))
-        # asadress = "ff:ff:ff:ff:ff:ff"
-        self.pktwriter.write(Ether(dst=asadress) / IP(raw))
-        self.pktinputwriter.write(Ether(dst=asadress) / IP(original_payload))
+
+    def write_packet(self, packet, modified, to_broker):
+
+        p = MQTT(packet).show2(dump=True, indent=0)
+        info = "\n\nTime: {}\nTo Broker: {} \n".format(time.time(), to_broker)
+
+        if modified:
+            self.pktwriter.write(info)
+            self.pktwriter.write(p)
+        else:
+            self.pktinputwriter.write(info)
+            self.pktinputwriter.write(p)
 
     def stop(self):
         self.running = False
         self.in_socket.close()
+        self.pktwriter.close()
+        self.pktinputwriter.close()
 
 
 class ConnectionHandler(threading.Thread):
