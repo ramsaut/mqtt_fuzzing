@@ -4,15 +4,17 @@ from mqtt_fuzzing.utils import goc, add_packet_to_templates
 import traceback
 
 def fuzz(packet, to_broker, templates):
+    original = packet.copy()
     payload = packet
     been_fuzzed = set()
     while payload:
         try:
             layer = templates[(to_broker, type(payload).__name__)]
         except KeyError:
-            # If there is no template return original
-            return packet
+            # If there is no template continue with next layer
+            continue
         print(layer)
+        payload.raw_packet_cache = None
 
         for fieldname, value in payload.fields.items():
             template_field = layer['fields'][fieldname]
@@ -30,6 +32,10 @@ def fuzz(packet, to_broker, templates):
                         fuzzed_case = p.communicate(input=content)[0]
                         print("Fuzzed: {}".format(fuzzed_case))
                         payload.fields[fieldname] = fuzzed_case
+                if fuzzing['fuzzer'] == 'scapy':
+                    been_fuzzed.add((type(payload).__name__, fieldname))
+                    fuzzed_case = payload.fieldtype[fieldname].randval() + 0
+                    payload.fields[fieldname] = fuzzed_case
 
         payload = payload.payload
 
@@ -73,5 +79,5 @@ def fuzz(packet, to_broker, templates):
         traceback.print_exc()
         print("Payload could not be created. Maybe string longer than possible? Retrying...")
         packet.show()
-        #packet = fuzz(packet, to_broker, templates)
+        packet = fuzz(original, to_broker, templates)
     return packet

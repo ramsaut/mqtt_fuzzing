@@ -199,7 +199,7 @@ class MultInterceptor(threading.Thread):
                         print(data)
 
                         data = self.modify(data, True)
-                        print("Sending data to client: {}".format(data))
+                        print("Sending data to broker: {}\n\n".format(data))
                         remote_socket.send(data)
                         self.write_packet(data, modified=True, to_broker=True)
                     else:
@@ -213,7 +213,7 @@ class MultInterceptor(threading.Thread):
                     if len(data):
                         print(data)
                         data = self.modify(data, False)
-                        print("Sending data to broker: {}".format(data))
+                        print("Sending data to client: {}\n\n".format(data))
                         local_socket.send(data)
                         self.write_packet(data, modified=True, to_broker=False)
                     else:
