@@ -1,10 +1,11 @@
 from scapy.all import IP, TCP, Ether
 from subprocess import Popen, PIPE, STDOUT
 from mqtt_fuzzing.utils import goc, add_packet_to_templates
-
+import traceback
 
 def fuzz(packet, to_broker, templates):
     payload = packet
+    been_fuzzed = set()
     while payload:
         try:
             layer = templates[(to_broker, type(payload).__name__)]
@@ -22,6 +23,7 @@ def fuzz(packet, to_broker, templates):
                 print(fuzzing)
                 if fuzzing['fuzzer'] == 'radamsa':
                     if fuzzing['cases'] == 'packet':
+                        been_fuzzed.add((type(payload).__name__, fieldname))
                         content = value
                         print("Content: {}".format(content))
                         p = Popen(['radamsa'], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
@@ -49,14 +51,27 @@ def fuzz(packet, to_broker, templates):
     #                   for f in listdir(dpath)]
     # # Inserting the value and recalculating some fields
     print("Fuzzed packet. Recalculating values")
-    del packet['MQTT'].len
+    print(been_fuzzed)
+
+    # Recompute if values have not been fuzzed
+    if ('MQTT', 'len') not in been_fuzzed:
+        del packet['MQTT'].len
     if 'MQTTPublish' in packet:
-        del packet['MQTTPublish'].length
+        if ('MQTTPublish', 'length') not in been_fuzzed:
+            del packet['MQTTPublish'].length
+    if 'MQTTConnect' in packet:
+        if ('MQTTConnect', 'length') not in been_fuzzed:
+            del packet['MQTTConnect'].length
+        if ('MQTTConnect', 'clientIdlen') not in been_fuzzed:
+            del packet['MQTTConnect'].clientIdlen
 
     try:
         print(bytes(packet))
         packet.show()
-    except:
+    except Exception as e:
+        print(packet.type)
+        traceback.print_exc()
         print("Payload could not be created. Maybe string longer than possible? Retrying...")
-        packet = fuzz(packet, to_broker, templates)
+        packet.show()
+        #packet = fuzz(packet, to_broker, templates)
     return packet

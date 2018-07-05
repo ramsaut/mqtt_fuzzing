@@ -4,6 +4,7 @@ import threading
 import time
 import os
 import signal
+import ssl
 
 
 class MQTTAlive(threading.Thread):
@@ -11,9 +12,17 @@ class MQTTAlive(threading.Thread):
     client1 = paho.Client("heartbeatsub")
     client2 = paho.Client("heartbeatpub")
     threads = []
+    running = True
 
     def __init__(self, timeout):
         super().__init__()
+        if config['Broker'].getboolean('SSL'):
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            self.client1.tls_set_context(context)
+            self.client2.tls_set_context(context)
+
         self.timeout = timeout
         self.client1.connect(config['Broker']['Host'], int(config['Broker']['Port'])) #establish connection
         self.client1.on_connect = self.on_connect
@@ -30,7 +39,7 @@ class MQTTAlive(threading.Thread):
     def run(self):
         self.last_beat = time.time()
         starttime = time.time()
-        while time.time() - starttime < self.timeout:
+        while time.time() - starttime < self.timeout and self.running:
             self.client1.loop(timeout=float(config['Heartbeat']['Frequency']), max_packets=1)
             # print("Send heartbeat {}".format(float(config['Heartbeat']['Frequency'])))
             time.sleep(float(config['Heartbeat']['Frequency']))
@@ -40,7 +49,8 @@ class MQTTAlive(threading.Thread):
                 print("Timeout! {} {} Stopping execution".format(time.time(), self.last_beat))
                 self.stop()
                 return
-        print("Finished test without finding bugs. Quitting!")
+        if self.running:
+            print("Finished test without finding bugs. Quitting!")
         self.stop()
 
     def add_thread(self, t):
@@ -49,3 +59,4 @@ class MQTTAlive(threading.Thread):
     def stop(self):
         for t in self.threads:
             t.stop()
+        self.running = False

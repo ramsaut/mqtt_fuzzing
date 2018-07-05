@@ -50,33 +50,36 @@ def handle_data(data, modules, dont_chain, incoming, verbose):
 
 def is_client_hello(sock):
     firstbytes = sock.recv(128, socket.MSG_PEEK)
+    print(firstbytes[0])
     return (len(firstbytes) >= 3 and
-            firstbytes[0] == "\x16" and
-            firstbytes[1:3] in ["\x03\x00",
-                                "\x03\x01",
-                                "\x03\x02",
-                                "\x03\x03",
-                                "\x02\x00"]
+            firstbytes[0] == 0x16 and
+            firstbytes[1:3] in [b"\x03\x00",
+                                b"\x03\x01",
+                                b"\x03\x02",
+                                b"\x03\x03",
+                                b"\x02\x00"]
             )
 
 
 def enable_ssl(remote_socket, local_socket):
     local_socket = ssl.wrap_socket(local_socket,
                                    server_side=True,
-                                   certfile="mitm.pem",
-                                   keyfile="mitm.pem",
+                                   cert_reqs=ssl.CERT_NONE,
+                                   ca_certs='data/certs/ca.crt',
+                                   certfile=config['Broker']['Certfile'],
+                                   keyfile=config['Broker']['Keyfile'],
                                    ssl_version=ssl.PROTOCOL_TLS,
                                    )
-
     remote_socket = ssl.wrap_socket(remote_socket)
+    print("Enabled SSL")
     return [remote_socket, local_socket]
 
 
 def starttls(local_socket, read_sockets):
     return (config['Broker'].getboolean('SSL') and
             local_socket in read_sockets and
-            not isinstance(local_socket, ssl.SSLSocket) and
-            is_client_hello(local_socket)
+            not isinstance(local_socket, ssl.SSLSocket)
+            and is_client_hello(local_socket)
             )
 
 
@@ -101,7 +104,7 @@ class Spoofer():
 
 
 class MultInterceptor(threading.Thread):
-    def __init__(self, templates, in_socket):
+    def __init__(self, templates, in_socket, mqtt_alive):
         """Initialization method of the `MultInterceptor` class.
 
         Parameters
@@ -115,6 +118,7 @@ class MultInterceptor(threading.Thread):
         self.pktwriter = open(config['Output']['File'], 'w')
         self.pktinputwriter = open(config['Output']['Unspoofed'], 'w')
         self.in_socket = in_socket
+        self.mqtt_alive = mqtt_alive
         super().__init__()
 
     def modify(self, packet, to_broker):
@@ -153,6 +157,8 @@ class MultInterceptor(threading.Thread):
         try:
             remote_socket.connect((config['Broker']['Host'], config['Broker'].getint('Port')))
             print('Connected to {}:{}'.format(config['Broker']['Host'], config['Broker']['Port']))
+            #if config['Broker']['SSL']:
+            #    remote_socket = ssl.wrap_socket(remote_socket)
         except socket.error as serr:
             if serr.errno == errno.ECONNREFUSED:
                 print('Connection refused to {}:{}'.format(config['Broker']['Host'], config['Broker']['Port']))
@@ -160,10 +166,16 @@ class MultInterceptor(threading.Thread):
 
         # This loop ends when no more data is received on either the local or the
         # remote socket
+        timer = 0.
         while self.running:
-            read_sockets, _, _ = select.select([remote_socket, local_socket], [], [], 1)
-
+            # Read from any of the sockets timout after 1s
+            read_sockets, _, _ = select.select([remote_socket, local_socket], [], [], float(config['Heartbeat']['Frequency']))
+            timer += float(config['Heartbeat']['Frequency'])
+            if timer > config['Heartbeat'].getint('Timeout'):
+                print("Client is not sending data anymore! Bug detected!")
+                self.mqtt_alive.stop()
             if starttls(local_socket, read_sockets):
+                print("Enable SSL")
                 try:
                     ssl_sockets = enable_ssl(remote_socket, local_socket)
                     remote_socket, local_socket = ssl_sockets
@@ -172,7 +184,7 @@ class MultInterceptor(threading.Thread):
                     print("SSL handshake failed", str(e))
                     break
 
-                read_sockets, _, _ = select.select(ssl_sockets, [], [])
+                read_sockets, _, _ = select.select(ssl_sockets, [], [], float(config['Heartbeat']['Frequency']))
 
             for sock in read_sockets:
                 peer = sock.getpeername()
@@ -180,6 +192,7 @@ class MultInterceptor(threading.Thread):
                 print('Received {} bytes'.format(len(data)))
 
                 if sock == local_socket:
+                    timer = 0
                     # From Client
                     self.write_packet(data, modified=False, to_broker=True)
                     if len(data):
@@ -274,6 +287,6 @@ class ConnectionHandler(threading.Thread):
                     timeout = True
             if not timeout:
                 print('Connection from {}'.format(in_addrinfo))
-                proxy_thread = MultInterceptor(self.templates, in_socket)
+                proxy_thread = MultInterceptor(self.templates, in_socket, alive)
                 proxy_thread.start()
                 alive.add_thread(proxy_thread)
