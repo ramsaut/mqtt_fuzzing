@@ -187,40 +187,48 @@ class MultInterceptor(threading.Thread):
                 read_sockets, _, _ = select.select(ssl_sockets, [], [], float(config['Heartbeat']['Frequency']))
 
             for sock in read_sockets:
-                peer = sock.getpeername()
-                data = receive_from(sock)
-                print('Received {} bytes'.format(len(data)))
+                try:
+                    peer = sock.getpeername()
+                    data = receive_from(sock)
+                    print('Received {} bytes'.format(len(data)))
 
-                if sock == local_socket:
-                    timer = 0
-                    # From Client
-                    self.write_packet(data, modified=False, to_broker=True)
-                    if len(data):
-                        print(data)
+                    if sock == local_socket:
+                        timer = 0
+                        # From Client
+                        self.write_packet(data, modified=False, to_broker=True)
+                        if len(data):
+                            print(data)
 
-                        data = self.modify(data, True)
-                        print("Sending data to broker: {}\n\n".format(data))
-                        remote_socket.send(data)
-                        self.write_packet(data, modified=True, to_broker=True)
-                    else:
-                        print("Connection from local client {} closed".format(peer))
-                        remote_socket.close()
-                        self.running = False
-                        break
-                elif sock == remote_socket:
-                    # From Broker
-                    self.write_packet(data, modified=False, to_broker=False)
-                    if len(data):
-                        print(data)
-                        data = self.modify(data, False)
-                        print("Sending data to client: {}\n\n".format(data))
-                        local_socket.send(data)
-                        self.write_packet(data, modified=True, to_broker=False)
-                    else:
-                        print("Connection to broker {} closed".format(peer))
-                        local_socket.close()
-                        self.running = False
-                        break
+                            data = self.modify(data, True)
+                            print("Sending data to broker: {}\n\n".format(data))
+                            remote_socket.send(data)
+                            self.write_packet(data, modified=True, to_broker=True)
+                        else:
+                            print("Connection from local client {} closed".format(peer))
+                            remote_socket.close()
+                            self.running = False
+                            break
+                    elif sock == remote_socket:
+                        # From Broker
+                        self.write_packet(data, modified=False, to_broker=False)
+                        if len(data):
+                            print(data)
+                            data = self.modify(data, False)
+                            print("Sending data to client: {}\n\n".format(data))
+                            local_socket.send(data)
+                            self.write_packet(data, modified=True, to_broker=False)
+                        else:
+                            print("Connection to broker {} closed".format(peer))
+                            local_socket.close()
+                            self.running = False
+                            break
+                except OSError:
+                    # Socket was closed in the meantime
+                    remote_socket.close()
+                    local_socket.close()
+                    self.running = False
+                    break
+
 
 
     def write_packet(self, packet, modified, to_broker):
