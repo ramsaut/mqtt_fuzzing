@@ -144,8 +144,6 @@ class MultInterceptor(threading.Thread):
 
         work_packet = fuzz(work_packet, to_broker, self.templates)
 
-        print(work_packet.summary())
-        print(bytes(work_packet))
         return bytes(work_packet)
 
     running = True
@@ -173,9 +171,7 @@ class MultInterceptor(threading.Thread):
                 read_sockets, _, _ = select.select([remote_socket, local_socket], [], [], float(config['Heartbeat']['Frequency']))
             except ValueError:
                 # filedescriptor out of range in select()
-                remote_socket.close()
-                local_socket.close()
-                self.running = False
+                self.stop()
                 break
             timer += float(config['Heartbeat']['Frequency'])
             if timer > config['Heartbeat'].getint('Timeout'):
@@ -204,30 +200,25 @@ class MultInterceptor(threading.Thread):
                         # From Client
                         self.write_packet(data, modified=False, to_broker=True)
                         if len(data):
-                            print(data)
-
                             data = self.modify(data, True)
                             print("Sending data to broker: {}\n\n".format(data))
                             remote_socket.send(data)
                             self.write_packet(data, modified=True, to_broker=True)
                         else:
                             print("Connection from local client {} closed".format(peer))
-                            remote_socket.close()
-                            self.running = False
+                            self.stop()
                             break
                     elif sock == remote_socket:
                         # From Broker
                         self.write_packet(data, modified=False, to_broker=False)
                         if len(data):
-                            print(data)
                             data = self.modify(data, False)
                             print("Sending data to client: {}\n\n".format(data))
                             local_socket.send(data)
                             self.write_packet(data, modified=True, to_broker=False)
                         else:
                             print("Connection to broker {} closed".format(peer))
-                            local_socket.close()
-                            self.running = False
+                            self.stop()
                             break
                 except OSError:
                     # Socket was closed in the meantime
