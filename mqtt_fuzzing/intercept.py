@@ -169,7 +169,14 @@ class MultInterceptor(threading.Thread):
         timer = 0.
         while self.running:
             # Read from any of the sockets timout after 1s
-            read_sockets, _, _ = select.select([remote_socket, local_socket], [], [], float(config['Heartbeat']['Frequency']))
+            try:
+                read_sockets, _, _ = select.select([remote_socket, local_socket], [], [], float(config['Heartbeat']['Frequency']))
+            except ValueError:
+                # filedescriptor out of range in select()
+                remote_socket.close()
+                local_socket.close()
+                self.running = False
+                break
             timer += float(config['Heartbeat']['Frequency'])
             if timer > config['Heartbeat'].getint('Timeout'):
                 print("Client is not sending data anymore! Bug detected!")
