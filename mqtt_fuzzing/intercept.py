@@ -1,16 +1,9 @@
 import ssl
 import logging
-from polymorph.utils import capture, get_arpspoofer, set_ip_forwarding
-from polymorph.interceptor import Interceptor
-from polymorph.packet import Packet
-import mqtt_fuzzing.preconditions
-from mqtt_fuzzing.extended_template import FuzzingTemplate
-from polymorph.template import Template
 import os, sys, threading, time
 from mqtt_fuzzing.mqtt_ping import MQTTAlive
 from scapy.utils import PcapWriter
 from mqtt_fuzzing.config import config
-from scapy.all import Ether, IP, TCP
 from scapy.contrib.mqtt import *
 from mqtt_fuzzing.fuzz import fuzz
 import socket
@@ -81,26 +74,6 @@ def starttls(local_socket, read_sockets):
             not isinstance(local_socket, ssl.SSLSocket)
             and is_client_hello(local_socket)
             )
-
-
-class Spoofer():
-    def __init__(self, targets, gateway, interface):
-        self.poisener = get_arpspoofer(targets, gateway, interface)
-
-    def start_spoofing(self):
-        # set_ip_forwarding(1)
-        try:
-            logger.info("Started ARP-Spoofing")
-            self.poisener.start()
-            return True
-        except Exception as e:
-            print(str(e))
-            logger.error("Invalid target(s) or gateway")
-            # set_ip_forwarding(0)
-            return False
-
-    def stop_spoofing(self):
-        self.poisener.stop()
 
 
 class MultInterceptor(threading.Thread):

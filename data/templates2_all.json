@@ -21,7 +21,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -32,7 +32,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -45,7 +45,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -56,7 +56,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -110,7 +110,7 @@
                     ],
                     "type": "VariableFieldLenField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 }
@@ -250,7 +250,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -260,7 +260,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -271,7 +271,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -282,7 +282,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -315,7 +315,7 @@
                     ],
                     "type": "VariableFieldLenField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 }
@@ -1064,7 +1064,7 @@
                     ],
                     "type": "FieldLenField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1095,8 +1095,8 @@
                     ],
                     "type": "StrLenField",
                     "fuzzing": {
-                        "fuzzer": null,
-                        "cases": null
+                        "fuzzer": "radamsa",
+                        "cases": "packet"
                     }
                 },
                 "protolevel": {
@@ -1105,7 +1105,7 @@
                     ],
                     "type": "ByteField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1115,7 +1115,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1125,7 +1125,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1135,7 +1135,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1145,7 +1145,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1155,7 +1155,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1165,7 +1165,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1175,7 +1175,7 @@
                     ],
                     "type": "BitEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1185,7 +1185,7 @@
                     ],
                     "type": "ShortField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1195,7 +1195,7 @@
                     ],
                     "type": "FieldLenField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1205,15 +1205,15 @@
                     ],
                     "type": "StrLenField",
                     "fuzzing": {
-                        "fuzzer": null,
-                        "cases": null
+                        "fuzzer": "radamsa",
+                        "cases": "packet"
                     }
                 },
                 "wtoplen": {
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1221,7 +1221,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1229,7 +1229,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1237,7 +1237,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1245,7 +1245,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1253,7 +1253,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1261,7 +1261,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1269,7 +1269,7 @@
                     "values": [],
                     "type": "ConditionalField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 }
@@ -1290,7 +1290,7 @@
                     ],
                     "type": "ByteField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1304,7 +1304,7 @@
                     ],
                     "type": "ByteEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 }
@@ -1365,7 +1365,7 @@
                     ],
                     "type": "ByteField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 },
@@ -1375,7 +1375,7 @@
                     ],
                     "type": "ByteEnumField",
                     "fuzzing": {
-                        "fuzzer": null,
+                        "fuzzer": "scapy",
                         "cases": null
                     }
                 }
