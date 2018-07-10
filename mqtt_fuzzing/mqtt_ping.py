@@ -2,8 +2,6 @@ import paho.mqtt.client as paho
 from mqtt_fuzzing.config import config
 import threading
 import time
-import os
-import signal
 import ssl
 
 

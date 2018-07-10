@@ -2,7 +2,6 @@ import ssl
 import logging
 import os, sys, threading, time
 from mqtt_fuzzing.mqtt_ping import MQTTAlive
-from scapy.utils import PcapWriter
 from mqtt_fuzzing.config import config
 from scapy.contrib.mqtt import *
 from mqtt_fuzzing.fuzz import fuzz

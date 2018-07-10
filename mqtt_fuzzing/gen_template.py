@@ -1,23 +1,9 @@
-from os.path import dirname, join
-import os
-import logging
-import pathlib
-import os, sys, threading, time
-from mqtt_fuzzing.mqtt_ping import MQTTAlive
-import multiprocessing
-from scapy.utils import wrpcap
-from scapy.utils import PcapWriter
 from mqtt_fuzzing.config import config
-from scapy.all import Ether, IP
-import socket
-import errno
-import select
 import copy
 from scapy.sendrecv import sniff
 import json
 import binascii
 from mqtt_fuzzing.utils import *
-from mqtt_fuzzing.fuzz import fuzz
 
 class TemplateGenerator():
 
