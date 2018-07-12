@@ -5,6 +5,7 @@ from mqtt_fuzzing.mqtt_ping import MQTTAlive
 from mqtt_fuzzing.config import config
 from scapy.contrib.mqtt import *
 from mqtt_fuzzing.fuzz import fuzz
+from scapy.all import PcapWriter, Ether, IP, TCP
 import socket
 import errno
 import select
@@ -76,7 +77,7 @@ def starttls(local_socket, read_sockets):
 
 
 class MultInterceptor(threading.Thread):
-    def __init__(self, templates, in_socket, mqtt_alive):
+    def __init__(self, templates, in_socket, mqtt_alive, in_addrinfo, pcapwriter):
         """Initialization method of the `MultInterceptor` class.
 
         Parameters
@@ -88,9 +89,21 @@ class MultInterceptor(threading.Thread):
         self.packets = dict()
         self.templates = templates
         self.pktwriter = open(config['Output']['File'], 'w')
+        self.pktwriterpcap = pcapwriter
         self.pktinputwriter = open(config['Output']['Unspoofed'], 'w')
+        self.seq1 = 0
+        self.seq2 = 0
+        self.ack1 = 0
+        self.ack2 = 0
         self.in_socket = in_socket
         self.mqtt_alive = mqtt_alive
+        self.client_ip = in_addrinfo[0]
+        self.client_port = in_addrinfo[1]
+        self.broker_ip = config['Broker']['Host']
+        self.broker_port = config['Broker'].getint('Port')
+        self.fuzzer_ip = '123.123.123.123' # Gets overwritten after connection to broker
+        self.fuzzer_port = '12345' # Gets overwritten after connection to broker
+
         super().__init__()
 
     def modify(self, packet, to_broker):
@@ -127,6 +140,7 @@ class MultInterceptor(threading.Thread):
         try:
             remote_socket.connect((config['Broker']['Host'], config['Broker'].getint('Port')))
             print('Connected to {}:{}'.format(config['Broker']['Host'], config['Broker']['Port']))
+            self.fuzzer_ip, self.fuzzer_port = remote_socket.getsockname()
             #if config['Broker']['SSL']:
             #    remote_socket = ssl.wrap_socket(remote_socket)
         except socket.error as serr:
@@ -199,12 +213,37 @@ class MultInterceptor(threading.Thread):
                     self.running = False
                     break
 
-
-
     def write_packet(self, packet, modified, to_broker):
-
         p = MQTT(packet).show2(dump=True, indent=0)
         info = "\n\nTime: {}\nTo Broker: {} \n".format(time.time(), to_broker)
+        if to_broker and modified:
+            src_ip = self.fuzzer_ip
+            src_port = self.fuzzer_port
+            dst_ip = self.broker_ip
+            dst_port = self.broker_port
+            seq = self.seq1
+            ack = self.ack1
+        elif to_broker and not modified:
+            src_ip = self.client_ip
+            src_port = self.client_port
+            dst_ip = self.fuzzer_ip
+            dst_port = self.broker_port
+            seq = self.seq2
+            ack = self.ack2
+        elif not to_broker and modified:
+            src_ip = self.fuzzer_ip
+            src_port = self.broker_port
+            dst_ip = self.client_ip
+            dst_port = self.client_port
+            seq = self.seq2
+            ack = self.ack2
+        elif not to_broker and not modified:
+            src_ip = self.broker_ip
+            src_port = self.broker_port
+            dst_ip = self.fuzzer_ip
+            dst_port = self.fuzzer_port
+            seq = self.seq1
+            ack = self.ack1
 
         if modified:
             self.pktwriter.write(info)
@@ -212,6 +251,22 @@ class MultInterceptor(threading.Thread):
         else:
             self.pktinputwriter.write(info)
             self.pktinputwriter.write(p)
+        self.pktwriterpcap.write(
+            Ether() / IP(src=src_ip, dst=dst_ip) / TCP(sport=src_port, dport=dst_port, seq=seq, flags='PA', ack=seq) / packet)
+
+        # increase seq number
+        if to_broker and modified:
+            self.ack1 = self.seq1
+            self.seq1 += len(packet) % pow(2, 32)
+        elif to_broker and not modified:
+            self.ack2 = self.seq2
+            self.seq2 += len(packet) % pow(2, 32)
+        elif not to_broker and modified:
+            self.ack2 = self.seq2
+            self.seq2 += len(packet) % pow(2, 32)
+        elif not to_broker and not modified:
+            self.ack1 = self.seq1
+            self.seq1 += len(packet) % pow(2, 32)
 
     def stop(self):
         self.running = False
@@ -219,9 +274,9 @@ class MultInterceptor(threading.Thread):
         self.pktwriter.close()
         self.pktinputwriter.close()
 
-
 class ConnectionHandler(threading.Thread):
     templates = {}
+    pcapw = PcapWriter(config['Output']['FilePcap'])
 
     def set_templates(self, templates):
         self.templates = templates
@@ -265,6 +320,8 @@ class ConnectionHandler(threading.Thread):
                     timeout = True
             if not timeout:
                 print('Connection from {}'.format(in_addrinfo))
-                proxy_thread = MultInterceptor(self.templates, in_socket, alive)
+                proxy_thread = MultInterceptor(self.templates, in_socket, alive, in_addrinfo, self.pcapw)
                 proxy_thread.start()
                 alive.add_thread(proxy_thread)
+
+        self.pcapw.close()

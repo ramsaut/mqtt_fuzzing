@@ -172,3 +172,16 @@ The program takes a black box approach to fuzz network systems. It can be adopte
 The following parts, would need to be rewritten:
 The recomputation needs to be adopted to recompute all lenth and checksum fields of the specific protocol. This part may be automated in future versions by including an attribute in the template which specifies which fields need recomputation.
 The `MQTTAlive` is protocol specific. For other protocols, a specific methods to check if the system is alive needs to be implemented.
+
+## Bugs found
+
+When processing fields of variable length the broker Mosquitto and the Arduino MQTT library pubsubclient wait for further data.
+
+- A common MQTT packet such as a publish packet is fuzzed. A length field e.g. the length field in the header is increased.
+- The package is acknowledged on the TCP layer
+- Their is no answer on the MQTT layer, a MQTTConnect is for example not answered with an MQTTConnAck
+- The TCP session is not closed, as it is commonly done, when a faulty packet is received
+- Further research needs to be done to validate the following attack
+  - The memory to write the payload into (up to 256 MB) is reserved
+  - Multiple connections are opened to the client / the broker
+  - All of the memory is used up resulting in a DoS
