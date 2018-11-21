@@ -22,9 +22,9 @@ class MQTTAlive(threading.Thread):
             self.client2.tls_set_context(context)
 
         self.timeout = timeout
-        self.client1.connect(config['Broker']['Host'], int(config['Broker']['Port'])) # establish connection
         self.client1.on_connect = self.on_connect
         self.client1.on_message = self.on_message
+        self.client1.connect(config['Broker']['Host'], int(config['Broker']['Port']))  # establish connection
         self.client2.connect(config['Broker']['Host'], int(config['Broker']['Port']))  # establish connection
 
     def on_connect(self, client, userdata, flags, rc):
